@@ -83,6 +83,9 @@ public:
     const Sophus::SE3d &delta() const { return last_delta_; }
     Sophus::SE3d &delta() { return last_delta_; }
 
+    /// Reset the map and odometry to initial state
+    void Reset();
+
 private:
     Sophus::SE3d last_pose_;
     Sophus::SE3d last_delta_;
