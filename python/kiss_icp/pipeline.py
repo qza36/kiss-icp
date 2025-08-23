@@ -25,12 +25,12 @@ import datetime
 import os
 import time
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Union
 
 import numpy as np
 from pyquaternion import Quaternion
 
-from kiss_icp.config import load_config, write_config
+from kiss_icp.config import KISSConfig, load_config, write_config
 from kiss_icp.kiss_icp import KissICP
 from kiss_icp.metrics import absolute_trajectory_error, sequence_error
 from kiss_icp.tools.pipeline_results import PipelineResults
@@ -42,7 +42,7 @@ class OdometryPipeline:
     def __init__(
         self,
         dataset,
-        config: Optional[Path] = None,
+        config: Union[Optional[Path], KISSConfig] = None,
         visualize: bool = False,
         n_scans: int = -1,
         jump: int = 0,
@@ -56,7 +56,7 @@ class OdometryPipeline:
         self._last = self._jump + self._n_scans
 
         # Config and output dir
-        self.config = load_config(config)
+        self.config = config if isinstance(config, KISSConfig) else load_config(config)
         self.results_dir = None
 
         # Pipeline

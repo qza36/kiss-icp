@@ -191,6 +191,15 @@ def kiss_icp_pipeline(
         help="[Optional] For Ouster pcap dataloader, specify metadata json file path explicitly",
         rich_help_panel="Additional Options",
     ),
+    prior_map: Optional[Path] = typer.Option(
+        None,
+        "--prior-map",
+        "-p",
+        exists=True,
+        show_default=False,
+        help="[Optional] Path to prior PCD map file for pose initialization",
+        rich_help_panel="Additional Options",
+    ),
     version: Optional[bool] = typer.Option(
         None,
         "--version",
@@ -214,6 +223,14 @@ def kiss_icp_pipeline(
 
     from kiss_icp.datasets import dataset_factory
     from kiss_icp.pipeline import OdometryPipeline
+    from kiss_icp.config import load_config
+
+    # Load config and set prior map if specified
+    config_obj = load_config(config)
+    if prior_map:
+        config_obj.initialization.use_prior_map = True
+        config_obj.initialization.prior_map_path = str(prior_map)
+        print(f"[INFO] Prior map initialization enabled with: {prior_map}")
 
     OdometryPipeline(
         dataset=dataset_factory(
@@ -224,7 +241,7 @@ def kiss_icp_pipeline(
             topic=topic,
             meta=meta,
         ),
-        config=config,
+        config=config_obj,  # Pass the modified config object instead of just the path
         visualize=visualize,
         n_scans=n_scans,
         jump=jump,

@@ -33,6 +33,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 from kiss_icp.config.config import (
     AdaptiveThresholdConfig,
     DataConfig,
+    InitializationConfig,
     MappingConfig,
     RegistrationConfig,
 )
@@ -45,6 +46,7 @@ class KISSConfig(BaseSettings):
     registration: RegistrationConfig = RegistrationConfig()
     mapping: MappingConfig = MappingConfig()
     adaptive_threshold: AdaptiveThresholdConfig = AdaptiveThresholdConfig()
+    initialization: InitializationConfig = InitializationConfig()
 
 
 def _yaml_source(config_file: Optional[Path]) -> Dict[str, Any]:
