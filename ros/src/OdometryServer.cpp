@@ -231,11 +231,9 @@ void OdometryServer::PublishClouds(const std::vector<Eigen::Vector3d> &frame,
     local_map_header.frame_id = lidar_odom_frame_;
     map_publisher_->publish(std::move(EigenToPointCloud2(kiss_map, local_map_header)));
 }
-void OdometryServer::ResetService(const std::shared_ptr<std_srvs::srv::Empty::Request> request,
-                                  std::shared_ptr<std_srvs::srv::Empty::Response> response) {
-    (void)request;   // Suppress unused parameter warning
-    (void)response;  // Suppress unused parameter warning
-
+void OdometryServer::ResetService(
+    [[maybe_unused]] const std::shared_ptr<std_srvs::srv::Empty::Request> request,
+    [[maybe_unused]] std::shared_ptr<std_srvs::srv::Empty::Response> response) {
     RCLCPP_INFO(this->get_logger(), "Resetting KISS-ICP map and odometry");
 
     // Reset the KISS-ICP pipeline
