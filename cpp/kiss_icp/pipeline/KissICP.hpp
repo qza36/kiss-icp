@@ -51,6 +51,10 @@ struct KISSConfig {
 
     // Motion compensation
     bool deskew = true;
+    
+    // Initialization params
+    bool use_prior_map = false;
+    std::string prior_map_path = "";
 };
 
 class KissICP {
@@ -65,7 +69,9 @@ public:
           registration_(
               config.max_num_iterations, config.convergence_criterion, config.max_num_threads),
           local_map_(config.voxel_size, config.max_range, config.max_points_per_voxel),
-          adaptive_threshold_(config.initial_threshold, config.min_motion_th, config.max_range) {}
+          adaptive_threshold_(config.initial_threshold, config.min_motion_th, config.max_range) {
+        LoadPriorMap();
+    }
 
 public:
     Vector3dVectorTuple RegisterFrame(const std::vector<Eigen::Vector3d> &frame,
@@ -85,8 +91,14 @@ public:
     void Reset();
 
 private:
+    Sophus::SE3d InitializePoseWithPriorMap(const std::vector<Eigen::Vector3d> &source);
+    void LoadPriorMap();
+
+private:
     Sophus::SE3d last_pose_;
     Sophus::SE3d last_delta_;
+    bool is_initialized_ = false;
+    std::vector<Eigen::Vector3d> prior_map_;
 
     // KISS-ICP pipeline modules
     KISSConfig config_;

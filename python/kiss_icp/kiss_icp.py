@@ -21,6 +21,8 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 import numpy as np
+import os
+from pathlib import Path
 
 from kiss_icp.config import KISSConfig
 from kiss_icp.mapping import get_voxel_hash_map
@@ -39,6 +41,72 @@ class KissICP:
         self.preprocessor = get_preprocessor(self.config)
         self.registration = get_registration(self.config)
         self.local_map = get_voxel_hash_map(self.config)
+        
+        # Prior map initialization
+        self.prior_map = None
+        self.is_initialized = False
+        if config.initialization.use_prior_map and config.initialization.prior_map_path:
+            self._load_prior_map()
+
+    def _load_prior_map(self):
+        """Load the prior PCD map from file."""
+        prior_map_path = self.config.initialization.prior_map_path
+        if not os.path.exists(prior_map_path):
+            print(f"[WARNING] Prior map file not found: {prior_map_path}")
+            return
+        
+        try:
+            # Use the generic dataset reader to load PCD file
+            from kiss_icp.datasets.generic import GenericDataset
+            
+            # Create a temporary dataset with just the prior map file
+            map_dir = Path(prior_map_path).parent
+            prior_map_dataset = GenericDataset(map_dir)
+            
+            # Find the specific file in the dataset
+            map_filename = Path(prior_map_path).name
+            for scan_file in prior_map_dataset.scan_files:
+                if Path(scan_file).name == map_filename:
+                    points, _ = prior_map_dataset.read_point_cloud(scan_file)
+                    self.prior_map = points
+                    print(f"[INFO] Loaded prior map with {len(points)} points from {prior_map_path}")
+                    break
+            
+            if self.prior_map is None:
+                print(f"[WARNING] Could not find prior map file in directory: {prior_map_path}")
+                
+        except Exception as e:
+            print(f"[WARNING] Failed to load prior map: {e}")
+            self.prior_map = None
+
+    def _initialize_pose_with_prior_map(self, source):
+        """Initialize pose by aligning the first frame with the prior map."""
+        if self.prior_map is None:
+            return np.eye(4)
+        
+        # Create a voxel hash map from the prior map
+        prior_voxel_map = get_voxel_hash_map(self.config)
+        prior_voxel_map.update(self.prior_map, np.eye(4))
+        
+        # Use registration to align the first frame with the prior map
+        # Start with identity as initial guess
+        initial_guess = np.eye(4)
+        sigma = self.config.adaptive_threshold.initial_threshold
+        
+        try:
+            # Align the source points to the prior map
+            initialized_pose = self.registration.align_points_to_map(
+                points=source,
+                voxel_map=prior_voxel_map,
+                initial_guess=initial_guess,
+                max_correspondance_distance=3 * sigma,
+                kernel=sigma,
+            )
+            print(f"[INFO] Initialized pose using prior map")
+            return initialized_pose
+        except Exception as e:
+            print(f"[WARNING] Failed to initialize pose with prior map: {e}")
+            return np.eye(4)
 
     def register_frame(self, frame, timestamps):
         # Apply motion compensation
@@ -49,6 +117,11 @@ class KissICP:
 
         # Get adaptive_threshold
         sigma = self.adaptive_threshold.get_threshold()
+
+        # Initialize pose with prior map if this is the first frame and prior map is available
+        if not self.is_initialized and self.config.initialization.use_prior_map and self.prior_map is not None:
+            self.last_pose = self._initialize_pose_with_prior_map(source)
+            self.is_initialized = True
 
         # Compute initial_guess for ICP
         initial_guess = self.last_pose @ self.last_delta

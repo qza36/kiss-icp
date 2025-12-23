@@ -46,3 +46,8 @@ class AdaptiveThresholdConfig(BaseModel):
     fixed_threshold: Optional[float] = None
     initial_threshold: float = 2.0
     min_motion_th: float = 0.1
+
+
+class InitializationConfig(BaseModel):
+    prior_map_path: Optional[str] = None  # Path to prior PCD map file for initialization
+    use_prior_map: bool = False  # Whether to use prior map for initialization
